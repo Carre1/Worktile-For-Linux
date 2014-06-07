@@ -1,6 +1,4 @@
 #!/bin/bash
-
-mkdir -p logs/
-nohup python miniWEB.py > ./logs/larryqq.log &
+nohup python miniWEB.py $1> /tmp/miniweb.log &
 sleep 1
-echo 'start ok' 
+echo 'start ok'

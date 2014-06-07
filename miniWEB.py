@@ -6,79 +6,104 @@
 # Date: Monday, May. 10 2013
 # Version: 1.0
 
-import os, gtk, pynotify, webkit, webbrowser, time
+import os, gtk, pynotify, webkit, webbrowser
+import sys, ConfigParser, time
 
-#import gtkmozembed
-#from selenium import webdriver
 
-URL = "https://wx.qq.com/"
 #URL = "http://www.baidu.com"
-INIIAL_TITLE = "miniWEB \t\tauthor:larryhu larryhu.com"
 
-ICON = os.path.join(os.getcwd(), 'wechat.jpg')
-WEB_NAME = "wechat"
-	
+# global schedudler
+# schedudler = Scheduler(daemonic = False)
 
 class MiniWEB():
+	'''
+	确切的说这是一个小型的WEB浏览器,你可以用他打开一个或者多个网页
+	'''
 	
 	def __init__(self):
+		
+		conf = ConfigParser.ConfigParser()
+		conf.read('miniweb.conf')
+		if len(sys.argv)>1:
+			section = sys.argv[1]
+			try:
+				conf.options(section)
+			except Exception as e:
+				print '启动失败.退出',e
+				print '可启动项:', conf.sections()
+				return
+		else:
+			section = 'wechat'
+			conf.options(section)
+		
+		
+		url = conf.get(section, 'url')
+		high = conf.getint(section, 'high')
+		width = conf.getint(section, 'width')
+		self.WEB_NAME=section
+		self.icon = os.path.abspath(conf.get(section, 'icon'))
 
 		tray = gtk.StatusIcon()
-		tray.set_from_file(ICON)
-		tray.set_tooltip(' miniWEB 1.0 ')
+		tray.set_from_file(self.icon)
+		tray.set_tooltip('miniWEB '+section)
 		tray.connect('popup-menu', self.popupMenu)
 		tray.connect('activate', self.clickTray)
 
-		page = webkit.WebView()#gtkmozembed.MozEmbed()
+		page = webkit.WebView()
 		page.connect('title-changed', self.titleChange)
-		setttings = page.get_settings()
-#		setttings.set_property("enable-universal-access-from-file-uris", True)
-		setttings.set_property('user-agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/28.0.1496.0 Safari/537.36 larryhu')
-#		setttings.set_property('enable-offline-web-application-cache', True)
-#		setttings.set_property('enable-page-cache', True)
-		setttings.set_property('enable-xss-auditor', False)
-
+		settings = page.get_settings()
+		settings.set_property("enable-universal-access-from-file-uris", True)
+		settings.set_property('user-agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/28.0.1496.0 Safari/537.36 larryhu')
+#		settings.set_property('enable-offline-web-application-cache', True)
+#		settings.set_property('enable-page-cache', True)
+		settings.set_property('enable-xss-auditor', False)
+		page.set_settings(settings)
+		
 		window = gtk.Window()
 		window.add(page)
 #		window.show_all()
 		window.connect("delete_event", self.minimize)
-		window.set_size_request(1000, 600)
-		window.set_title(INIIAL_TITLE)
-		window.set_icon_from_file(ICON)
-		self.lastMessage = None
-
+		
+		window.set_size_request(width, high)
+		window.set_title("miniWEB "+section)
+		window.set_icon_from_file(self.icon)
+		
 		window.show_all()
 		self.window = window
 		self.page = page
 		self.tray = tray
-
-#		print dir(self.page)
-		self.page.open(URL)
-#		self.page.reload()
-
+		self.page.open(url)
+		
+		self.last_notify_time = time.time()
+		self.msgs = set()
+		pynotify.init("image")
+		
 		gtk.main()
 
 	def minimize(self, widget, event, data=None):
 		self.window.hide()
 		return True
-
+	
 	def titleChange(self, *data):
 		title = self.page.get_title()
+		self.msgs.add(title)
 		self.tray = gtk.StatusIcon()
-#		print '\nnotify %s \n' % (self.lastMessage)
-		if title.endswith('...') and title!=self.lastMessage:
-			self.lastMessage = title
-			self.tray.set_blinking(True)
+		if len(self.msgs) > 1:
 			self.notification()
+			self.tray.set_blinking(True)
 		else:
-			if self.tray.get_blinking():
-				self.tray.set_blinking(False)
-
+			self.tray.set_blinking(False)
+			
+			
 	def notification(self):
-		pynotify.init("image")
-#		print 'notify load icon ', ICON
-		notify = pynotify.Notification(WEB_NAME, self.page.get_title(), ICON)
-		notify.show()
+		size = len(self.msgs)
+		if size > 1 and (time.time() - self.last_notify_time) > 10:
+			self.last_notify_time = time.time()
+			notify = pynotify.Notification(self.WEB_NAME, list(self.msgs)[size-1], self.icon)
+			self.msgs.clear()
+			notify.set_timeout(1)
+			notify.show()
+			
 
 	def popupMenu(self, statusicon, button, activate_time):
 		self.Author_Blog = 'http://www.larryhu.com'
@@ -98,11 +123,14 @@ class MiniWEB():
 		menu.show_all()
 		menu.popup(None, None, None, 0, gtk.get_current_event_time())
 
+
 	def quit(self, widget):
 		gtk.main_quit()
 
+
 	def openLink(self, widget):
 		webbrowser.open_new_tab(self.Author_Blog)
+
 
 	def clickTray(self, widget):
 		if self.window.get_property('is-active'):
