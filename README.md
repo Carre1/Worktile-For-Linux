@@ -7,16 +7,23 @@ FOR 被TX抛弃的linuxer!!!
 
 miniWeb其实是一个基于webkit开发的微型'浏览器',该应用能够满足你同时登陆多个微信和QQ的需求,你只需要按照下方安装方式安装,即可变理想为现实 -_-
 
-#安装方法
+# 安装方法
+
 ## linux下安装方式
+
+```bash
 
 $git clone https://github.com/larryhu/miniWEB.git
 $cd miniWEB
 $./start.sh #默认启动微信, 微信: start.sh wechat QQ: start.sh qq
 
+```
+
 依赖环境安装:
 
+```bash
 $sudo apt-get install python-notify python-webkit 
+```
 
 so easy!!!
 
